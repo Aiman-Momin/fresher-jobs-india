@@ -1,6 +1,6 @@
 {
-  "adzuna_queries": ["intern", "internship", "fresher", "graduate trainee", "entry level", "software intern", "data analyst fresher", "marketing intern", "sales fresher", "hr intern", "finance fresher", "content writer intern"],
-  "adzuna_pages": 3,
+  "adzuna_queries": ["intern", "fresher", "graduate trainee", "entry level", "software intern"],
+  "adzuna_pages": 2,
   "greenhouse": ["razorpaysoftwareprivatelimited", "groww", "phonepe", "databricks", "stripe", "airbnb", "cloudflare", "elastic", "twilio", "mongodb"],
   "lever": ["cred", "paytm", "meesho", "upgrad", "dream11"],
   "max_age_days": 30
