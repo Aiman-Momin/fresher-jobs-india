@@ -30,17 +30,25 @@ def dedupe(jobs):
 def tag(jobs, usage):
     url = os.getenv("TAG_API_URL", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
     key = os.environ["TAG_API_KEY"]
+    budget = int(os.getenv("TAG_BUDGET_SEC", "1200"))  # stop tagging after 20 min so the run always finishes and saves
+    start, fails_in_row = time.time(), 0
+    for j in jobs:  # defaults, so anything we do not reach is retried on the next run
+        j["role"], j["city"], j["tagged"] = "Other", "Unknown", False
     for i in range(0, len(jobs), 10):
+        if time.time() - start > budget:
+            print(f"time budget hit, stopping. {len(jobs) - i} posts left for the next run", flush=True); break
+        if fails_in_row >= 3:
+            print("3 batches failed in a row (limit or error), stopping. Rest will retry next run", flush=True); break
         batch = jobs[i:i + 10]
         body = "\n\n".join(f'id: {j["id"]}\ntitle: {j["title"]}\ncompany: {j["company"]}\nlocation: {j["location"]}\ntext: {j["description"][:1200]}' for j in batch)
         res = {}
-        for attempt in range(4):
+        for attempt in range(3):
             try:
-                r = requests.post(url, headers={"Authorization": f"Bearer {key}"}, timeout=90, json={
+                r = requests.post(url, headers={"Authorization": f"Bearer {key}"}, timeout=60, json={
                     "model": MODEL, "temperature": 0,
                     "messages": [{"role": "system", "content": PROMPT}, {"role": "user", "content": body}]})
                 if r.status_code == 429:
-                    time.sleep(20 * (attempt + 1)); continue
+                    print("rate limited, waiting 30s", flush=True); time.sleep(30); continue
                 r.raise_for_status()
                 d = r.json()
                 txt = d["choices"][0]["message"]["content"]
@@ -51,12 +59,15 @@ def tag(jobs, usage):
                 usage["posts"] += len(batch)
                 break
             except Exception as e:
-                print("tag batch failed", attempt, str(e)[:200]); time.sleep(5)
+                print("tag batch failed", attempt, str(e)[:300], flush=True); time.sleep(5)
+        fails_in_row = 0 if res else fails_in_row + 1
         for j in batch:
             x = res.get(j["id"], {})
-            j["role"] = x.get("role") if x.get("role") in ROLES else "Other"
-            j["city"] = x.get("city") if x.get("city") in CITIES else "Unknown"
-            j["tagged"] = bool(x)
+            if x:
+                j["role"] = x.get("role") if x.get("role") in ROLES else "Other"
+                j["city"] = x.get("city") if x.get("city") in CITIES else "Unknown"
+                j["tagged"] = True
+        print(f"batch {i // 10 + 1}/{(len(jobs) + 9) // 10} done, {sum(1 for j in jobs if j['tagged'])} tagged so far", flush=True)
         time.sleep(4)
 
 def main():
