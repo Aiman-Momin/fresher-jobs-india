@@ -1,11 +1,11 @@
-import os, re, json, hashlib, datetime as dt
+import os, re, json, time, hashlib, requests, datetime as dt
 from difflib import SequenceMatcher
 import sources
 
 FRESHER = re.compile(r"\bintern(ship)?s?\b|fresher|graduate|entry[- ]level|trainee|apprentice|\b0\s*(-|to)\s*[12]\s*(yrs|years|year)|junior|campus", re.I)
 ROLES = ["Software Engineering", "Data/ML", "Product", "Design", "Marketing", "Sales/BD", "Operations", "Finance", "HR", "Content/Writing", "Other"]
 CITIES = ["Bengaluru", "Mumbai", "Delhi NCR", "Hyderabad", "Pune", "Chennai", "Kolkata", "Ahmedabad", "Remote", "Other India", "Unknown"]
-MODEL = os.getenv("TAG_MODEL", "claude-haiku-5-5")
+MODEL = os.getenv("TAG_MODEL", "gemini-flash-latest")
 PROMPT = f"""You tag Indian job posts. For each post return a role and a city.
 Roles (pick exactly one): {ROLES}
 Cities (pick exactly one): {CITIES}
@@ -28,24 +28,36 @@ def dedupe(jobs):
     return kept
 
 def tag(jobs, usage):
-    import anthropic
-    client = anthropic.Anthropic()
+    url = os.getenv("TAG_API_URL", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+    key = os.environ["TAG_API_KEY"]
     for i in range(0, len(jobs), 10):
         batch = jobs[i:i + 10]
         body = "\n\n".join(f'id: {j["id"]}\ntitle: {j["title"]}\ncompany: {j["company"]}\nlocation: {j["location"]}\ntext: {j["description"][:1200]}' for j in batch)
-        try:
-            r = client.messages.create(model=MODEL, max_tokens=1000, system=PROMPT, messages=[{"role": "user", "content": body}])
-            usage["in"] += r.usage.input_tokens; usage["out"] += r.usage.output_tokens
-            txt = re.sub(r"```json|```", "", r.content[0].text).strip()
-            res = {x["id"]: x for x in json.loads(txt)}
-        except Exception as e:
-            print("tag batch failed", e); res = {}
+        res = {}
+        for attempt in range(4):
+            try:
+                r = requests.post(url, headers={"Authorization": f"Bearer {key}"}, timeout=90, json={
+                    "model": MODEL, "temperature": 0,
+                    "messages": [{"role": "system", "content": PROMPT}, {"role": "user", "content": body}]})
+                if r.status_code == 429:
+                    time.sleep(20 * (attempt + 1)); continue
+                r.raise_for_status()
+                d = r.json()
+                txt = d["choices"][0]["message"]["content"]
+                txt = txt[txt.index("["): txt.rindex("]") + 1]
+                res = {x["id"]: x for x in json.loads(txt)}
+                u = d.get("usage") or {}
+                usage["in"] += u.get("prompt_tokens", 0); usage["out"] += u.get("completion_tokens", 0)
+                usage["posts"] += len(batch)
+                break
+            except Exception as e:
+                print("tag batch failed", attempt, str(e)[:200]); time.sleep(5)
         for j in batch:
             x = res.get(j["id"], {})
             j["role"] = x.get("role") if x.get("role") in ROLES else "Other"
             j["city"] = x.get("city") if x.get("city") in CITIES else "Unknown"
             j["tagged"] = bool(x)
-        usage["posts"] += len(batch)
+        time.sleep(4)
 
 def main():
     cfg = json.load(open("config.json"))
@@ -64,7 +76,7 @@ def main():
     for j in new: j.setdefault("first_seen", today.isoformat())
     usage_path = "data/usage.json"
     usage = json.load(open(usage_path)) if os.path.exists(usage_path) else {"in": 0, "out": 0, "posts": 0}
-    if new and os.getenv("ANTHROPIC_API_KEY"): tag(new, usage)
+    if new and os.getenv("TAG_API_KEY"): tag(new, usage)
     json.dump(usage, open(usage_path, "w"))
     for j in pool: j["description"] = j["description"][:400]
     pool.sort(key=lambda j: j.get("posted", ""), reverse=True)
