@@ -1,0 +1,50 @@
+1, Software Engineering, Hyderabad
+2, HR, Mumbai
+3, Design, Bengaluru
+4, Content/Writing, Pune
+5, Content/Writing, Bengaluru
+6, Data/ML, Bengaluru
+7, Marketing, Other India
+8, Software Engineering, Bengaluru
+9, Operations, Mumbai
+10, Content/Writing, Chennai
+11, Operations, Other India
+12, HR, Other India
+13, Finance, Unknown
+14, Marketing, Other India
+15, Operations, Mumbai
+16, Marketing, Pune
+17, Sales/BD, Unknown
+18, Operations, Mumbai
+19, HR, Delhi NCR
+20, Operations, Hyderabad
+21, Software Engineering, Bengaluru
+22, HR, Mumbai
+23, Software Engineering, Pune
+24, Operations, Ahmedabad
+25, Software Engineering, Delhi NCR
+26, Software Engineering, Other India
+27, Marketing, Delhi NCR
+28, Operations, Hyderabad
+29, Marketing, Other India
+30, Other, Other India
+31, Operations, Other India
+32, Operations, Other India
+33, Operations, Other India
+34, Finance, Delhi NCR
+35, Data/ML, Bengaluru
+36, HR, Bengaluru
+37, Software Engineering, Bengaluru
+38, Software Engineering, Remote
+39, Marketing, Delhi NCR
+40, Marketing, Hyderabad
+41, Sales/BD, Pune
+42, HR, Mumbai
+43, Marketing, Bengaluru
+44, Software Engineering, Hyderabad
+45, Software Engineering, Delhi NCR
+46, Operations, Other India
+47, Other, Pune
+48, Content/Writing, Pune
+49, Other, Ahmedabad
+50, Other, Other India
